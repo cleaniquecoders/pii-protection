@@ -1,8 +1,6 @@
 # PII Protection
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/cleaniquecoders/pii-protection.svg?style=flat-square)](https://packagist.org/packages/cleaniquecoders/pii-protection)
-[![Tests](https://img.shields.io/github/actions/workflow/status/cleaniquecoders/pii-protection/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/cleaniquecoders/pii-protection/actions/workflows/run-tests.yml)
-[![Total Downloads](https://img.shields.io/packagist/dt/cleaniquecoders/pii-protection.svg?style=flat-square)](https://packagist.org/packages/cleaniquecoders/pii-protection)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/cleaniquecoders/pii-protection.svg?style=flat-square)](https://packagist.org/packages/cleaniquecoders/pii-protection) [![Tests](https://img.shields.io/github/actions/workflow/status/cleaniquecoders/pii-protection/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/cleaniquecoders/pii-protection/actions/workflows/run-tests.yml) [![Total Downloads](https://img.shields.io/packagist/dt/cleaniquecoders/pii-protection.svg?style=flat-square)](https://packagist.org/packages/cleaniquecoders/pii-protection)
 
 Pure-PHP PII protection: field-level **encryption at rest** + **masking** of
 sensitive fields in audit/log payloads. No framework, no global state — plain

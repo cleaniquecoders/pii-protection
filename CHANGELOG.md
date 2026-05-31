@@ -2,6 +2,8 @@
 
 All notable changes to `pii-protection` will be documented in this file.
 
+## [Unreleased]
+
 ## 1.0.0 - 2026-05-31
 
 Initial release — pure-PHP, framework-agnostic PII protection primitives. Constructor-injected, contract-based, zero framework dependencies.
@@ -26,5 +28,3 @@ composer require cleaniquecoders/pii-protection
 
 ```
 **Guardrail:** never encrypt a value used in a lookup / equality / uniqueness check — ciphertext is non-deterministic and won't match. Mask or hash those instead.
-
-## [Unreleased]

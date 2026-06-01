@@ -2,6 +2,17 @@
 
 All notable changes to `pii-protection` will be documented in this file.
 
+## 1.3.0 - 2026-06-01
+
+Object/DTO redaction and tokenization. Non-breaking; stays within 1.x.
+
+### Added
+
+- **`#[Pii]` attribute + `ObjectRedactor`** — tag public properties of an object/DTO and redact them into an array. A tag may name its own `MaskStrategy`; untagged properties are copied through untouched; uninitialized properties become `null`.
+- **`Tokenizer` + `Vault`** — replace a PII value with an opaque, random token (`tok_...`) reversible only through a vault. Ships with an in-memory `ArrayVault`; implement the `Vault` contract to persist tokens elsewhere.
+
+**Full changelog:** https://github.com/cleaniquecoders/pii-protection/blob/main/CHANGELOG.md
+
 ## 1.2.0 - 2026-06-01
 
 Encryption hardening and free-text PII detection. Backward compatible with 1.0/1.1 ciphertext — no breaking changes.
@@ -67,6 +78,7 @@ PHP `^8.4`, `ext-openssl`, `ext-mbstring`.
 
 ```bash
 composer require cleaniquecoders/pii-protection
+
 
 
 

@@ -222,6 +222,46 @@ $clean = $redactor->redact($payload, [
 ]);
 ```
 
+### Redacting objects / DTOs
+
+Tag properties with `#[Pii]` and let `ObjectRedactor` mask them into an array.
+A tag can name its own strategy; otherwise the redactor's default is used.
+
+```php
+use CleaniqueCoders\PiiProtection\Attributes\Pii;
+use CleaniqueCoders\PiiProtection\ObjectRedactor;
+use CleaniqueCoders\PiiProtection\Masking\EmailStrategy;
+
+class User
+{
+    public function __construct(
+        #[Pii] public string $name,
+        #[Pii(strategy: EmailStrategy::class)] public string $email,
+        public int $age, // untagged — copied through untouched
+    ) {}
+}
+
+$clean = (new ObjectRedactor(new FullStrategy))->redact($user);
+// ['name' => '********', 'email' => '****@acme.com', 'age' => 30]
+```
+
+### Tokenization
+
+Swap a PII value for an opaque, random token and keep the mapping in a `Vault`.
+An in-memory `ArrayVault` ships with the package; implement `Vault` to persist
+tokens elsewhere.
+
+```php
+use CleaniqueCoders\PiiProtection\Tokenization\Tokenizer;
+use CleaniqueCoders\PiiProtection\Tokenization\ArrayVault;
+
+$tokenizer = new Tokenizer(new ArrayVault);
+
+$token = $tokenizer->tokenize('012345678'); // "tok_9f3a..." — reveals nothing
+$tokenizer->detokenize($token);             // "012345678"
+$tokenizer->forget($token);                 // drop the mapping
+```
+
 ## Errors
 
 Encryption/decryption failures throw a typed exception under
@@ -244,7 +284,8 @@ src/
 │   ├── Encrypter.php          # encrypt(string): string ; decrypt(string): string
 │   ├── ContextualEncrypter.php # adds AAD-bound encrypt/decrypt
 │   ├── MaskStrategy.php       # mask(string): string
-│   └── Redactor.php           # redact(array $data, array $fields): array
+│   ├── Redactor.php           # redact(array $data, array $fields): array
+│   └── Vault.php              # token <-> value store contract
 ├── Masking/
 │   ├── TailStrategy.php       # keep last N chars (default 4)
 │   ├── FullStrategy.php       # mask everything
@@ -261,11 +302,17 @@ src/
 │   └── HmacBlindIndex.php     # deterministic index for searchable lookups
 ├── Detection/
 │   └── PiiScrubber.php        # detect/scrub PII patterns in free text
+├── Tokenization/
+│   ├── Tokenizer.php          # value <-> opaque token
+│   └── ArrayVault.php         # in-memory Vault implementation
+├── Attributes/
+│   └── Pii.php                # #[Pii] property marker
 ├── Exceptions/
 │   ├── PiiException.php        # base (extends RuntimeException)
 │   ├── EncryptionException.php
 │   └── DecryptionException.php
 ├── ArrayRedactor.php          # nested + JSON + per-field + dot-path redaction
+├── ObjectRedactor.php         # redacts #[Pii]-tagged object properties
 └── PiiManager.php             # convenience wrapper over strategy + encrypter
 ```
 

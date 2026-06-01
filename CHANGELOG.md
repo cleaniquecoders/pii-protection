@@ -2,6 +2,23 @@
 
 All notable changes to `pii-protection` will be documented in this file.
 
+## 1.3.1 - 2026-06-01
+
+Documentation release. No code changes — the library API is identical to 1.3.0.
+
+### Documentation
+
+- Added a complete, numbered documentation set under [`docs/`](https://github.com/cleaniquecoders/pii-protection/tree/main/docs):
+  - **01-architecture** — primitives, contracts, and design decisions.
+  - **02-usage** — getting started, masking, encryption & key rotation, redaction, detection & tokenization.
+  - **03-development** — testing, quality tooling, and the release process.
+  - **04-api** — full public API reference.
+  
+- README: added License and PHP-version badges plus a Documentation section.
+- Added `.markdownlintrc` and started tracking `docs/`.
+
+**Full changelog:** https://github.com/cleaniquecoders/pii-protection/blob/main/CHANGELOG.md
+
 ## [Unreleased]
 
 ## 1.3.0 - 2026-06-01
@@ -78,6 +95,7 @@ PHP `^8.4`, `ext-openssl`, `ext-mbstring`.
 
 ```bash
 composer require cleaniquecoders/pii-protection
+
 
 
 

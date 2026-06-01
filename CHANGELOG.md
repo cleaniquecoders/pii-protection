@@ -2,6 +2,26 @@
 
 All notable changes to `pii-protection` will be documented in this file.
 
+## 1.1.0 - 2026-06-01
+
+Masking, redaction & developer-experience enhancements. Fully backward compatible — no breaking changes.
+
+### Added
+
+- New masking strategies: `CreditCardStrategy`, `IpStrategy`, `NameStrategy`, and `NricStrategy` (Malaysian MyKad).
+- Configurable mask character (`maskChar`, default `*`) on `TailStrategy`, `FullStrategy`, and `EmailStrategy`.
+- Per-field strategy map in `ArrayRedactor` — map each field to its own `MaskStrategy` in a single pass, mixable with plain field names.
+- Dot-path & wildcard targeting in `ArrayRedactor` (`user.phone`, `users.*.phone`), usable as values or strategy-mapped keys.
+- Exception hierarchy: `PiiException` (base), `EncryptionException`, `DecryptionException` — all extend `RuntimeException`.
+- PHPStan at `level: max` with a dedicated CI workflow; Pest native mutation testing via `composer test-mutate`.
+
+### Notes
+
+- `OpenSslEncrypter` now throws the typed exceptions above instead of a bare `RuntimeException` (still a subclass — existing catch blocks keep working).
+- The `Redactor` payload phpdoc widened to `array<array-key, mixed>` (more permissive, non-breaking).
+
+**Full changelog:** https://github.com/cleaniquecoders/pii-protection/blob/main/CHANGELOG.md
+
 ## [Unreleased]
 
 ## 1.0.0 - 2026-05-31
@@ -25,6 +45,7 @@ PHP `^8.4`, `ext-openssl`, `ext-mbstring`.
 
 ```bash
 composer require cleaniquecoders/pii-protection
+
 
 ```
 **Guardrail:** never encrypt a value used in a lookup / equality / uniqueness check — ciphertext is non-deterministic and won't match. Mask or hash those instead.

@@ -100,7 +100,8 @@ Every strategy takes an optional `maskChar` (default `*`) so you can render with
 ### Encryption at rest
 
 `OpenSslEncrypter` uses AES-256-GCM. The key is injected via the constructor —
-the library never reads env/config and never manages key rotation.
+the library never reads env/config. Each message uses a random IV and a random
+HKDF salt, so encrypting the same value twice yields different ciphertext.
 
 ```php
 use CleaniqueCoders\PiiProtection\Encryption\OpenSslEncrypter;
@@ -111,8 +112,75 @@ $cipher = $encrypter->encrypt('012345678'); // store this
 $plain  = $encrypter->decrypt($cipher);     // "012345678"
 ```
 
-Each call uses a random IV/nonce, so encrypting the same value twice yields
-different ciphertext.
+Ciphertext is written in a self-describing, versioned format
+(`v2.<keyId>.<payload>`). Ciphertext produced by 1.0/1.1 still decrypts
+unchanged — upgrades are seamless.
+
+**Context binding (AAD)** — bind ciphertext to a context (user id, column name)
+so it cannot be moved between rows/columns. The same context is required to
+decrypt:
+
+```php
+$cipher = $encrypter->encryptWithContext('012345678', 'user:123');
+$plain  = $encrypter->decryptWithContext($cipher, 'user:123'); // wrong context throws
+```
+
+**Key rotation** — give it a `KeyRing` with multiple keys: new ciphertext uses
+the current key, while older ciphertext keeps decrypting with whichever key its
+id points to. No big-bang re-encryption needed.
+
+```php
+use CleaniqueCoders\PiiProtection\Encryption\KeyRing;
+
+$encrypter = new OpenSslEncrypter(new KeyRing(
+    ['2024' => $oldKey, '2025' => $newKey],
+    currentId: '2025', // encrypt with this; '2024' ciphertext still decrypts
+));
+```
+
+### Searchable lookups (blind index)
+
+Encryption is non-deterministic, so you cannot query an encrypted column. Store
+a deterministic `HmacBlindIndex` alongside the ciphertext and query that instead
+— it is one-way and only confirms a match, never reveals the value.
+
+```php
+use CleaniqueCoders\PiiProtection\Encryption\HmacBlindIndex;
+
+$blind = new HmacBlindIndex(key: $indexKey);
+
+$row = [
+    'email_cipher' => $encrypter->encrypt($email),  // for retrieval/display
+    'email_index'  => $blind->index($email),        // for WHERE email_index = ?
+];
+
+$blind->matches($email, $row['email_index']); // true
+```
+
+### Scrubbing free text
+
+`PiiScrubber` masks PII patterns inside free text (log lines, messages), not
+just named fields — with built-in detectors for email, credit card, Malaysian
+NRIC, IPv4 and phone numbers.
+
+```php
+use CleaniqueCoders\PiiProtection\Detection\PiiScrubber;
+
+(new PiiScrubber)->scrub('contact john@acme.com from 192.168.1.42');
+// "contact ************* from ************"
+
+(new PiiScrubber)->detect($logLine); // [['type' => 'email', 'value' => ..., 'offset' => ...], ...]
+```
+
+Or mask any custom pattern with `RegexStrategy`:
+
+```php
+use CleaniqueCoders\PiiProtection\Masking\RegexStrategy;
+use CleaniqueCoders\PiiProtection\Masking\TailStrategy;
+
+(new RegexStrategy('/\d{10}/', new TailStrategy(visible: 4)))->mask('ref 0123456789');
+// "ref ******6789"
+```
 
 ### Redaction of payloads
 
@@ -163,9 +231,10 @@ so existing catch blocks keep working).
 
 ## Guardrail — never encrypt lookup values
 
-> **Never encrypt a value used in a lookup / equality / uniqueness check.**
-> Ciphertext is non-deterministic (random IV per call) and will not match across
-> rows or queries. **Mask or hash** those values instead.
+> **Never query on an encrypted column.** Ciphertext is non-deterministic
+> (random IV + salt per call) and will not match across rows or queries. To
+> support equality lookups, store an `HmacBlindIndex` alongside the ciphertext
+> and query that — or `mask`/`hash` the value if you don't need to reverse it.
 
 ## Architecture
 
@@ -173,6 +242,7 @@ so existing catch blocks keep working).
 src/
 ├── Contracts/
 │   ├── Encrypter.php          # encrypt(string): string ; decrypt(string): string
+│   ├── ContextualEncrypter.php # adds AAD-bound encrypt/decrypt
 │   ├── MaskStrategy.php       # mask(string): string
 │   └── Redactor.php           # redact(array $data, array $fields): array
 ├── Masking/
@@ -183,9 +253,14 @@ src/
 │   ├── CreditCardStrategy.php # keep last 4 digits, preserve grouping
 │   ├── IpStrategy.php         # mask the last octet/group
 │   ├── NameStrategy.php       # keep each word's initial
-│   └── NricStrategy.php       # mask Malaysian MyKad digits, keep dashes
+│   ├── NricStrategy.php       # mask Malaysian MyKad digits, keep dashes
+│   └── RegexStrategy.php      # mask substrings matching a pattern
 ├── Encryption/
-│   └── OpenSslEncrypter.php   # AES-256-GCM, key injected via constructor
+│   ├── OpenSslEncrypter.php   # AES-256-GCM, HKDF, AAD, versioned format
+│   ├── KeyRing.php            # multi-key holder for key rotation
+│   └── HmacBlindIndex.php     # deterministic index for searchable lookups
+├── Detection/
+│   └── PiiScrubber.php        # detect/scrub PII patterns in free text
 ├── Exceptions/
 │   ├── PiiException.php        # base (extends RuntimeException)
 │   ├── EncryptionException.php
@@ -202,8 +277,9 @@ src/
 2. **Configurable visible tail.** `TailStrategy(visible: N)` — default 4.
 3. **Nested / JSON PII.** `ArrayRedactor` recurses, so structured columns are
    covered, not just flat scalars.
-4. **Key handling is the caller's job.** `OpenSslEncrypter` takes a key in its
-   constructor; the library never reads env/config or manages key rotation.
+4. **Key handling is the caller's job.** `OpenSslEncrypter` takes a key (or a
+   `KeyRing`) in its constructor; the library never reads env/config. Rotation
+   is supported via the ring, but loading/storing keys is up to you.
 
 ## Testing
 

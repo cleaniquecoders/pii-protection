@@ -2,6 +2,8 @@
 
 All notable changes to `pii-protection` will be documented in this file.
 
+## [Unreleased]
+
 ## 1.3.0 - 2026-06-01
 
 Object/DTO redaction and tokenization. Non-breaking; stays within 1.x.
@@ -54,8 +56,6 @@ Masking, redaction & developer-experience enhancements. Fully backward compatibl
 - The `Redactor` payload phpdoc widened to `array<array-key, mixed>` (more permissive, non-breaking).
 
 **Full changelog:** https://github.com/cleaniquecoders/pii-protection/blob/main/CHANGELOG.md
-
-## [Unreleased]
 
 ## 1.0.0 - 2026-05-31
 

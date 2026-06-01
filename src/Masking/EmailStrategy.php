@@ -8,14 +8,17 @@ use CleaniqueCoders\PiiProtection\Contracts\MaskStrategy;
 
 final class EmailStrategy implements MaskStrategy
 {
-    public function __construct(private string $maskedLocal = '****') {}
+    public function __construct(
+        private string $maskedLocal = '****',
+        private string $maskChar = '*',
+    ) {}
 
     public function mask(string $value): string
     {
         $position = mb_strrpos($value, '@');
 
         if ($position === false) {
-            return str_repeat('*', mb_strlen($value));
+            return str_repeat($this->maskChar, mb_strlen($value));
         }
 
         return $this->maskedLocal.mb_substr($value, $position);

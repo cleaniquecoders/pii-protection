@@ -57,23 +57,44 @@ $audit  = $manager->redact($payload, ['phone', 'national_id']);
 
 Each strategy implements `MaskStrategy::mask(string $value): string`.
 
+Each strategy implements `MaskStrategy::mask(string $value): string`.
+
 | Strategy | Behaviour | Reversible |
 |----------|-----------|------------|
 | `TailStrategy` | Keep last N chars, mask the rest (`******6789`) | No |
-| `FullStrategy` | Mask every char (`*********`) | No |
+| `FullStrategy` | Mask every char (`**********`) | No |
 | `EmailStrategy` | Mask local-part, keep domain (`****@acme.com`) | No |
 | `HashStrategy` | Replace with a one-way `sha256` digest | No |
+| `CreditCardStrategy` | Keep last 4 digits, preserve grouping (`**** **** **** 1111`) | No |
+| `IpStrategy` | Mask the last octet/group (`192.168.1.**`) | No |
+| `NameStrategy` | Keep each word's initial (`J*** D**`) | No |
+| `NricStrategy` | Mask MyKad digits, keep dashes (`******-**-****`) | No |
 
 ```php
 use CleaniqueCoders\PiiProtection\Masking\TailStrategy;
 use CleaniqueCoders\PiiProtection\Masking\FullStrategy;
 use CleaniqueCoders\PiiProtection\Masking\EmailStrategy;
 use CleaniqueCoders\PiiProtection\Masking\HashStrategy;
+use CleaniqueCoders\PiiProtection\Masking\CreditCardStrategy;
+use CleaniqueCoders\PiiProtection\Masking\IpStrategy;
+use CleaniqueCoders\PiiProtection\Masking\NameStrategy;
+use CleaniqueCoders\PiiProtection\Masking\NricStrategy;
 
-(new TailStrategy(visible: 4))->mask('0123456789'); // "******6789"
-(new FullStrategy())->mask('0123456789');           // "**********"
-(new EmailStrategy())->mask('john.doe@acme.com');   // "****@acme.com"
-(new HashStrategy())->mask('0123456789');           // "f4b0...e21" (sha256)
+(new TailStrategy(visible: 4))->mask('0123456789');   // "******6789"
+(new FullStrategy())->mask('0123456789');             // "**********"
+(new EmailStrategy())->mask('john.doe@acme.com');     // "****@acme.com"
+(new HashStrategy())->mask('0123456789');             // "f4b0...e21" (sha256)
+(new CreditCardStrategy())->mask('4111 1111 1111 1111'); // "**** **** **** 1111"
+(new IpStrategy())->mask('192.168.1.42');             // "192.168.1.**"
+(new NameStrategy())->mask('John Doe');               // "J*** D**"
+(new NricStrategy())->mask('900101-01-1234');         // "******-**-****"
+```
+
+Every strategy takes an optional `maskChar` (default `*`) so you can render with
+`•`, `x`, or any character:
+
+```php
+(new TailStrategy(visible: 4, maskChar: '•'))->mask('0123456789'); // "••••••6789"
 ```
 
 ### Encryption at rest
@@ -110,6 +131,36 @@ $redactor = new ArrayRedactor(new TailStrategy(visible: 4));
 $clean = $redactor->redact($payload, ['phone', 'national_id']);
 ```
 
+**Per-field strategies** — map each field to its own strategy in a single pass
+(plain field names still use the redactor's default strategy):
+
+```php
+$clean = $redactor->redact($payload, [
+    'email' => new EmailStrategy,
+    'phone' => new TailStrategy(visible: 4),
+    'nric'  => new HashStrategy,
+    'name',  // uses the default strategy
+]);
+```
+
+**Dot-path & wildcard targeting** — target a precise location instead of any key
+with that name; `*` matches any key at that level:
+
+```php
+$clean = $redactor->redact($payload, [
+    'user.phone',        // only user.phone, not a top-level "phone"
+    'users.*.phone',     // every users[].phone
+    'contact.email' => new EmailStrategy,
+]);
+```
+
+## Errors
+
+Encryption/decryption failures throw a typed exception under
+`CleaniqueCoders\PiiProtection\Exceptions\`: `EncryptionException` and
+`DecryptionException`, both extending `PiiException` (itself a `RuntimeException`,
+so existing catch blocks keep working).
+
 ## Guardrail — never encrypt lookup values
 
 > **Never encrypt a value used in a lookup / equality / uniqueness check.**
@@ -128,10 +179,18 @@ src/
 │   ├── TailStrategy.php       # keep last N chars (default 4)
 │   ├── FullStrategy.php       # mask everything
 │   ├── EmailStrategy.php      # mask local-part, keep domain
-│   └── HashStrategy.php       # one-way (sha256) for non-reversible PII
+│   ├── HashStrategy.php       # one-way (sha256) for non-reversible PII
+│   ├── CreditCardStrategy.php # keep last 4 digits, preserve grouping
+│   ├── IpStrategy.php         # mask the last octet/group
+│   ├── NameStrategy.php       # keep each word's initial
+│   └── NricStrategy.php       # mask Malaysian MyKad digits, keep dashes
 ├── Encryption/
 │   └── OpenSslEncrypter.php   # AES-256-GCM, key injected via constructor
-├── ArrayRedactor.php          # walks nested arrays, applies a MaskStrategy
+├── Exceptions/
+│   ├── PiiException.php        # base (extends RuntimeException)
+│   ├── EncryptionException.php
+│   └── DecryptionException.php
+├── ArrayRedactor.php          # nested + JSON + per-field + dot-path redaction
 └── PiiManager.php             # convenience wrapper over strategy + encrypter
 ```
 
@@ -149,7 +208,9 @@ src/
 ## Testing
 
 ```bash
-composer test
+composer test          # Pest test suite
+composer analyse       # PHPStan (level max)
+composer test-mutate   # Pest mutation testing (needs a coverage driver)
 ```
 
 ## Changelog

@@ -2,6 +2,28 @@
 
 All notable changes to `pii-protection` will be documented in this file.
 
+## 1.2.0 - 2026-06-01
+
+Encryption hardening and free-text PII detection. Backward compatible with 1.0/1.1 ciphertext — no breaking changes.
+
+### Added
+
+- **Context binding (AAD)** via `ContextualEncrypter` — `encryptWithContext()` / `decryptWithContext()` bind ciphertext to a context (user id, column name); the same context is required to decrypt.
+- **Key rotation** via `KeyRing` — new ciphertext uses the current key; older ciphertext decrypts with whichever key its id points to. No big-bang re-encryption.
+- **HKDF-SHA256** per-message key derivation, with a random salt, for the new versioned ciphertext.
+- **`HmacBlindIndex`** — deterministic, one-way index for searchable equality lookups on encrypted data.
+- **`PiiScrubber`** + **`RegexStrategy`** — scrub PII (email, credit card, Malaysian NRIC, IPv4, phone) out of free text, plus arbitrary patterns.
+
+### Changed
+
+- `OpenSslEncrypter` now writes a self-describing versioned format (`v2.<keyId>.<payload>`) and accepts either a key string or a `KeyRing`.
+
+### Backward compatibility
+
+Ciphertext produced by 1.0/1.1 still decrypts unchanged via the legacy path — the `v2.` prefix is unambiguous because `.` is not a base64 character.
+
+**Full changelog:** https://github.com/cleaniquecoders/pii-protection/blob/main/CHANGELOG.md
+
 ## 1.1.0 - 2026-06-01
 
 Masking, redaction & developer-experience enhancements. Fully backward compatible — no breaking changes.
@@ -45,6 +67,7 @@ PHP `^8.4`, `ext-openssl`, `ext-mbstring`.
 
 ```bash
 composer require cleaniquecoders/pii-protection
+
 
 
 ```

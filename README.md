@@ -1,6 +1,10 @@
 # PII Protection
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/cleaniquecoders/pii-protection.svg?style=flat-square)](https://packagist.org/packages/cleaniquecoders/pii-protection) [![Tests](https://img.shields.io/github/actions/workflow/status/cleaniquecoders/pii-protection/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/cleaniquecoders/pii-protection/actions/workflows/run-tests.yml) [![Total Downloads](https://img.shields.io/packagist/dt/cleaniquecoders/pii-protection.svg?style=flat-square)](https://packagist.org/packages/cleaniquecoders/pii-protection)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/cleaniquecoders/pii-protection.svg?style=flat-square)](https://packagist.org/packages/cleaniquecoders/pii-protection)
+[![Tests](https://img.shields.io/github/actions/workflow/status/cleaniquecoders/pii-protection/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/cleaniquecoders/pii-protection/actions/workflows/run-tests.yml)
+[![Total Downloads](https://img.shields.io/packagist/dt/cleaniquecoders/pii-protection.svg?style=flat-square)](https://packagist.org/packages/cleaniquecoders/pii-protection)
+[![PHP Version](https://img.shields.io/packagist/dependency-v/cleaniquecoders/pii-protection/php?style=flat-square)](https://packagist.org/packages/cleaniquecoders/pii-protection)
+[![License](https://img.shields.io/github/license/cleaniquecoders/pii-protection?style=flat-square)](LICENSE.md)
 
 Pure-PHP PII protection: field-level **encryption at rest** + **masking** of
 sensitive fields in audit/log payloads. No framework, no global state — plain
@@ -316,7 +320,7 @@ src/
 └── PiiManager.php             # convenience wrapper over strategy + encrypter
 ```
 
-**Design notes**
+### Design notes
 
 1. **Single responsibility per class.** Strategies, encrypter, redactor, and the
    wrapper are independent and swappable; consumers depend on the contracts, not
@@ -327,6 +331,15 @@ src/
 4. **Key handling is the caller's job.** `OpenSslEncrypter` takes a key (or a
    `KeyRing`) in its constructor; the library never reads env/config. Rotation
    is supported via the ring, but loading/storing keys is up to you.
+
+## Documentation
+
+Full documentation lives in [`docs/`](docs/README.md):
+
+- [Architecture](docs/01-architecture/README.md) — primitives, contracts, design decisions.
+- [Usage](docs/02-usage/README.md) — masking, encryption & key rotation, redaction, detection, tokenization.
+- [Development](docs/03-development/README.md) — testing, quality tooling, releases.
+- [API Reference](docs/04-api/README.md) — every public class and method.
 
 ## Testing
 

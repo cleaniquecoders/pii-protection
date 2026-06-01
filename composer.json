@@ -20,8 +20,9 @@
         "ext-openssl": "*"
     },
     "require-dev": {
-        "pestphp/pest": "^4.0",
         "laravel/pint": "^1.0",
+        "pestphp/pest": "^4.0",
+        "phpstan/phpstan": "^2.0",
         "spatie/ray": "^1.28"
     },
     "autoload": {
@@ -36,7 +37,9 @@
     },
     "scripts": {
         "test": "vendor/bin/pest",
-            "test-coverage": "vendor/bin/pest --coverage",
+        "test-coverage": "vendor/bin/pest --coverage",
+        "analyse": "vendor/bin/phpstan analyse",
+        "test-mutate": "vendor/bin/pest --mutate --covered-only --parallel",
         "format": "vendor/bin/pint"
     },
     "config": {

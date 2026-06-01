@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace CleaniqueCoders\PiiProtection\Encryption;
 
 use CleaniqueCoders\PiiProtection\Contracts\Encrypter;
-use RuntimeException;
+use CleaniqueCoders\PiiProtection\Exceptions\DecryptionException;
+use CleaniqueCoders\PiiProtection\Exceptions\EncryptionException;
 
 final class OpenSslEncrypter implements Encrypter
 {
@@ -21,7 +22,7 @@ final class OpenSslEncrypter implements Encrypter
     public function __construct(#[\SensitiveParameter] string $key)
     {
         if ($key === '') {
-            throw new RuntimeException('Encryption key must not be empty.');
+            throw EncryptionException::emptyKey();
         }
 
         // Normalise arbitrary key material to a raw 256-bit key.
@@ -30,7 +31,12 @@ final class OpenSslEncrypter implements Encrypter
 
     public function encrypt(string $plain): string
     {
-        $ivLength = (int) openssl_cipher_iv_length(self::CIPHER);
+        $ivLength = openssl_cipher_iv_length(self::CIPHER);
+
+        if ($ivLength < 1) {
+            throw EncryptionException::failed();
+        }
+
         $iv = random_bytes($ivLength);
         $tag = '';
 
@@ -46,7 +52,7 @@ final class OpenSslEncrypter implements Encrypter
         );
 
         if ($cipher === false) {
-            throw new RuntimeException('Encryption failed.');
+            throw EncryptionException::failed();
         }
 
         return base64_encode($iv.$tag.$cipher);
@@ -57,14 +63,14 @@ final class OpenSslEncrypter implements Encrypter
         $decoded = base64_decode($cipher, true);
 
         if ($decoded === false) {
-            throw new RuntimeException('Invalid ciphertext: not valid base64.');
+            throw DecryptionException::notBase64();
         }
 
         $ivLength = (int) openssl_cipher_iv_length(self::CIPHER);
         $minLength = $ivLength + self::TAG_LENGTH;
 
         if (strlen($decoded) < $minLength) {
-            throw new RuntimeException('Invalid ciphertext: payload too short.');
+            throw DecryptionException::tooShort();
         }
 
         $iv = substr($decoded, 0, $ivLength);
@@ -81,7 +87,7 @@ final class OpenSslEncrypter implements Encrypter
         );
 
         if ($plain === false) {
-            throw new RuntimeException('Decryption failed: ciphertext may be tampered or the key is wrong.');
+            throw DecryptionException::failed();
         }
 
         return $plain;

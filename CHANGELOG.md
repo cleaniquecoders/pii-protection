@@ -2,6 +2,20 @@
 
 All notable changes to `pii-protection` will be documented in this file.
 
+## Update - 2026-07-09
+
+### What's Changed
+
+* build(deps): Bump stefanzweifel/git-auto-commit-action from 7 to 7.1.0 by @dependabot[bot] in https://github.com/cleaniquecoders/pii-protection/pull/27
+* build(deps): Bump stefanzweifel/git-auto-commit-action from 7.1.0 to 7.2.0 by @dependabot[bot] in https://github.com/cleaniquecoders/pii-protection/pull/28
+* build(deps): Bump actions/checkout from 6 to 7 by @dependabot[bot] in https://github.com/cleaniquecoders/pii-protection/pull/26
+
+### New Contributors
+
+* @dependabot[bot] made their first contribution in https://github.com/cleaniquecoders/pii-protection/pull/27
+
+**Full Changelog**: https://github.com/cleaniquecoders/pii-protection/compare/1.3.1...1.3.2
+
 ## 1.3.1 - 2026-06-01
 
 Documentation release. No code changes — the library API is identical to 1.3.0.
@@ -9,13 +23,16 @@ Documentation release. No code changes — the library API is identical to 1.3.0
 ### Documentation
 
 - Added a complete, numbered documentation set under [`docs/`](https://github.com/cleaniquecoders/pii-protection/tree/main/docs):
+  
   - **01-architecture** — primitives, contracts, and design decisions.
   - **02-usage** — getting started, masking, encryption & key rotation, redaction, detection & tokenization.
   - **03-development** — testing, quality tooling, and the release process.
   - **04-api** — full public API reference.
   
 - README: added License and PHP-version badges plus a Documentation section.
+  
 - Added `.markdownlintrc` and started tracking `docs/`.
+  
 
 **Full changelog:** https://github.com/cleaniquecoders/pii-protection/blob/main/CHANGELOG.md
 
@@ -95,6 +112,7 @@ PHP `^8.4`, `ext-openssl`, `ext-mbstring`.
 
 ```bash
 composer require cleaniquecoders/pii-protection
+
 
 
 

@@ -1,7 +1,7 @@
 # Detection & Tokenization
 
-Two capabilities for data that does not arrive as neat named fields: scrubbing
-PII out of free text, and replacing values with opaque tokens.
+Capabilities for data that does not arrive as neat named fields: scrubbing PII
+and secrets out of free text, and replacing values with opaque tokens.
 
 ## Scrubbing free text
 
@@ -55,6 +55,87 @@ use CleaniqueCoders\PiiProtection\Masking\TailStrategy;
 (new RegexStrategy('/\d{10}/', new TailStrategy(visible: 4)))->mask('ref 0123456789');
 // "ref ******6789"
 ```
+
+## Scrubbing secrets
+
+`SecretScrubber` is the sibling of `PiiScrubber`, for **machine credentials**
+instead of personal data.
+
+The separation is deliberate. PII detectors look for email, phone, NRIC and IP;
+secret detectors look for keys, tokens and passwords. The sets do not overlap,
+and running the wrong one does real damage — an infrastructure log with every
+IP and email removed is no longer debuggable.
+
+```php
+use CleaniqueCoders\PiiProtection\Detection\SecretScrubber;
+
+(new SecretScrubber)->scrub('DB_PASSWORD=hunter2 APP_ENV=production');
+// "DB_PASSWORD=[redacted] APP_ENV=production"
+
+(new SecretScrubber)->scrub('connecting to postgres://app:s3cr3t@db:5432/app');
+// "connecting to postgres://app:[redacted]@db:5432/app"
+```
+
+Several detectors keep their surrounding context on purpose. Knowing *which*
+credential leaked, and where it pointed, is most of the value of the log line —
+`APP_ENV=production` is untouched.
+
+### Detectors
+
+| Type | Matches |
+|------|---------|
+| `private_key` | PEM blocks of any key type, including the armour |
+| `url_credentials` | The password in `scheme://user:pass@host` |
+| `jwt` | Three-segment JSON Web Tokens |
+| `aws_access_key_id` | `AKIA`/`ASIA`/`AGPA`/`AIDA`/`AROA`/`ANPA`/`ANVA` + 16 chars |
+| `authorization` | The token after `Bearer` / `Basic` |
+| `assignment` | Values of sensitively-named keys (`SECRET_KEY=…`, `"api_token": …`) |
+
+Detection is best-effort — it cannot recognise a secret with no distinctive
+shape and no telling name. Pair it with `LiteralScrubber` when you hold the
+values.
+
+`detect()`, `types()` and the `strategy` / `types` constructor arguments work
+exactly as they do on `PiiScrubber`.
+
+## Scrubbing known values
+
+`LiteralScrubber` masks exact values you already hold — a resolved token, an
+injected password, an API key from config. An exact match is certain where a
+pattern is a guess.
+
+```php
+use CleaniqueCoders\PiiProtection\Detection\LiteralScrubber;
+
+(new LiteralScrubber)->scrub('token abc123xyz here', ['abc123xyz']);
+// "token [redacted] here"
+```
+
+### The three safety rules
+
+None of these are obvious until the output is wrong:
+
+- **Longest first.** A short value nested inside a longer one is masked second,
+  so it cannot corrupt the longer one and leave part of it exposed.
+- **Minimum length** (default 6). Blanking every occurrence of a 4-character
+  value shreds unrelated text.
+- **Skip pure digits.** A port, a replica count and a timeout are not secrets,
+  and masking them everywhere destroys the log.
+
+```php
+new LiteralScrubber(minLength: 8, skipNumeric: false);
+```
+
+`prepare()` returns the values that survived those rules, so you can see why
+something you passed was skipped rather than concluding the scrubber is broken:
+
+```php
+(new LiteralScrubber)->prepare(['short', '5432', null, 'long-enough-value']);
+// ['long-enough-value']
+```
+
+`detect()` reports value and offset for each occurrence without modifying the
+text.
 
 ## Tokenization
 

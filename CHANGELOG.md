@@ -2,6 +2,40 @@
 
 All notable changes to `pii-protection` will be documented in this file.
 
+## 1.4.0 - 2026-08-07
+
+Adds credential scrubbing alongside the existing PII scrubbing. Additive only — no breaking changes.
+
+### Added
+
+- **`Detection\SecretScrubber`** — the sibling of `PiiScrubber`, for machine credentials rather than personal data. The detector sets are deliberately disjoint: an infrastructure log with every IP address and email removed is no longer debuggable, so PII detectors must not run over it, and vice versa.
+  
+  Detectors: `private_key` (PEM blocks), `url_credentials`, `jwt`, `aws_access_key_id`, `authorization` (Bearer/Basic), `assignment` (`SECRET_KEY=…`, `"api_token": …`).
+  
+  Several patterns use `\K` so the surrounding context survives — knowing *which* credential leaked and where it pointed is most of the value of the log line:
+  
+  ```
+  DB_PASSWORD=hunter2 APP_ENV=production
+  → DB_PASSWORD=[redacted] APP_ENV=production
+  
+  connecting to postgres://app:s3cr3t@db:5432/app
+  → connecting to postgres://app:[redacted]@db:5432/app
+  
+  ```
+- **`Detection\LiteralScrubber`** — masks exact values the caller already holds, where a pattern can only guess. Sorts longest-first so a short value nested inside a longer one cannot corrupt it, skips values under 6 characters, and skips pure digits so ports and replica counts stay readable. `prepare()` exposes what survived those rules.
+  
+  Use both: patterns catch secrets you never issued, literals catch the ones with no distinctive shape.
+  
+- **`Masking\RedactedStrategy`** — replaces the value with a fixed placeholder (`[redacted]` by default). Use this for credentials rather than `FullStrategy`, which is length preserving: that suits PII, where a masked address still reads as an address, but for a secret the length is itself a disclosure — it separates a 16-character API key from a 64-character session token and narrows an offline guess.
+  
+
+### Notes
+
+- 42 new tests (146 total, 193 assertions), PHPStan level max clean.
+- Documentation updated in `README.md`, `docs/02-usage/02-masking.md`, `docs/02-usage/05-detection-and-tokenization.md` and `docs/04-api/README.md`.
+
+**Full Changelog**: https://github.com/cleaniquecoders/pii-protection/compare/1.3.2...1.4.0
+
 ## Update - 2026-07-09
 
 ### What's Changed
@@ -112,6 +146,7 @@ PHP `^8.4`, `ext-openssl`, `ext-mbstring`.
 
 ```bash
 composer require cleaniquecoders/pii-protection
+
 
 
 

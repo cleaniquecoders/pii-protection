@@ -57,8 +57,6 @@ $audit  = $manager->redact($payload, ['phone', 'national_id']);
 
 Each strategy implements `MaskStrategy::mask(string $value): string`.
 
-Each strategy implements `MaskStrategy::mask(string $value): string`.
-
 | Strategy | Behaviour | Reversible |
 |----------|-----------|------------|
 | `TailStrategy` | Keep last N chars, mask the rest (`******6789`) | No |
@@ -69,6 +67,7 @@ Each strategy implements `MaskStrategy::mask(string $value): string`.
 | `IpStrategy` | Mask the last octet/group (`192.168.1.**`) | No |
 | `NameStrategy` | Keep each word's initial (`J*** D**`) | No |
 | `NricStrategy` | Mask MyKad digits, keep dashes (`******-**-****`) | No |
+| `RedactedStrategy` | Replace with a fixed placeholder (`[redacted]`) — hides the length too | No |
 
 ```php
 use CleaniqueCoders\PiiProtection\Masking\TailStrategy;
@@ -181,6 +180,43 @@ use CleaniqueCoders\PiiProtection\Masking\TailStrategy;
 (new RegexStrategy('/\d{10}/', new TailStrategy(visible: 4)))->mask('ref 0123456789');
 // "ref ******6789"
 ```
+
+### Scrubbing secrets
+
+`SecretScrubber` is the sibling of `PiiScrubber` for **machine credentials** —
+keys, tokens and passwords rather than personal data. The two detector sets are
+deliberately disjoint: scrubbing every IP address and email out of an
+infrastructure log removes exactly the detail needed to debug it.
+
+```php
+use CleaniqueCoders\PiiProtection\Detection\SecretScrubber;
+
+(new SecretScrubber)->scrub('DB_PASSWORD=hunter2 via postgres://app:s3cr3t@db/app');
+// "DB_PASSWORD=[redacted] via postgres://app:[redacted]@db/app"
+```
+
+Note what survives. Which variable leaked, and which host it pointed at, is
+most of the value of the log line — only the credential is removed.
+
+Detectors: `private_key` (PEM blocks), `url_credentials`, `jwt`,
+`aws_access_key_id`, `authorization` (Bearer/Basic), `assignment`
+(`SECRET_KEY=…`, `"api_token": …`).
+
+When you already hold the secrets, `LiteralScrubber` masks them by exact match
+— certain where a pattern is a guess:
+
+```php
+use CleaniqueCoders\PiiProtection\Detection\LiteralScrubber;
+
+(new LiteralScrubber)->scrub($logLine, [$apiToken, $dbPassword]);
+```
+
+It sorts longest-first so a short secret nested inside a longer one cannot
+corrupt it, skips values under 6 characters, and skips pure digits so ports and
+counts stay readable. `prepare()` shows what survived those rules.
+
+Use both: patterns catch secrets you never issued, literals catch the ones with
+no distinctive shape.
 
 ### Redaction of payloads
 

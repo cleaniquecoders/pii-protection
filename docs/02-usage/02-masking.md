@@ -96,3 +96,20 @@ must compare but never reverse.
 
 - [Redaction](04-redaction.md) — apply strategies across a whole payload.
 - [Detection & Tokenization](05-detection-and-tokenization.md) — mask patterns in free text.
+
+## Redacting secrets
+
+`RedactedStrategy` replaces the whole value with a fixed placeholder:
+
+```php
+use CleaniqueCoders\PiiProtection\Masking\RedactedStrategy;
+
+(new RedactedStrategy)->mask('hunter2');        // "[redacted]"
+(new RedactedStrategy('***REMOVED***'))->mask('hunter2'); // "***REMOVED***"
+```
+
+Use it for credentials rather than `FullStrategy`. `FullStrategy` is length
+preserving — `hunter2` becomes `*******` — which suits PII, where a masked
+address still reads as an address. For a secret the length is itself a
+disclosure: it separates a 16-character API key from a 64-character session
+token and narrows an offline guess.

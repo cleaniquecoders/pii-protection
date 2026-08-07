@@ -28,6 +28,7 @@ Each implements `MaskStrategy`.
 | `NameStrategy` | `__construct(string $maskChar = '*')` |
 | `NricStrategy` | `__construct(bool $keepBirthDate = false, string $maskChar = '*')` |
 | `RegexStrategy` | `__construct(string $pattern, MaskStrategy $inner = new FullStrategy)` |
+| `RedactedStrategy` | `__construct(string $placeholder = '[redacted]')` |
 
 See [Masking](../02-usage/02-masking.md) for behaviour and examples.
 
@@ -114,6 +115,39 @@ detect(string $text): array // [['type' => string, 'value' => string, 'offset' =
 
 Built-in detector types: `email`, `credit_card`, `nric`, `ipv4`, `phone`.
 Default strategy is `FullStrategy`; default types are all of them.
+
+### `SecretScrubber`
+
+```php
+__construct(?MaskStrategy $strategy = null, ?array $types = null)
+scrub(string $text): string
+detect(string $text): array // [['type' => string, 'value' => string, 'offset' => int], ...]
+static types(): array
+```
+
+Built-in detector types: `private_key`, `url_credentials`, `jwt`,
+`aws_access_key_id`, `authorization`, `assignment`. Default strategy is
+`RedactedStrategy`; default types are all of them.
+
+Finds machine credentials, not personal data — the detector set is disjoint
+from `PiiScrubber`'s on purpose.
+
+### `LiteralScrubber`
+
+```php
+__construct(
+    ?MaskStrategy $strategy = null,
+    int $minLength = self::MIN_LENGTH, // 6
+    bool $skipNumeric = true,
+)
+scrub(string $text, array $values): string
+detect(string $text, array $values): array // [['value' => string, 'offset' => int], ...]
+prepare(array $values): array              // values that survive the safety rules
+```
+
+Masks exact values the caller already holds. Sorts longest-first, drops values
+below `$minLength`, and (by default) drops purely numeric values. Default
+strategy is `RedactedStrategy`.
 
 ## Tokenization (`\Tokenization`)
 
